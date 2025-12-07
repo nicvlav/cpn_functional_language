@@ -75,7 +75,6 @@ The interpreter will evaluate each expression in the file sequentially.
 (add 1 2 3)                    # Returns 6
 (mult 5 (sub 10 3))            # Returns 35
 (add 1 (mult 2 4))             # Returns 9
-(sqrt (add (pow 3 2) (pow 4 2)))  # Returns 5.0 (Pythagorean theorem)
 (neg (abs -42))                # Returns -42
 ```
 
