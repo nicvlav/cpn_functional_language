@@ -57,7 +57,7 @@ Run the interpreter without arguments to enter an interactive prompt:
 Then enter expressions one at a time:
 ```
 > (add 1 2 3)
-> (mult 5 (sub 10 3))
+> (neg (abs -42))
 > quit
 ```
 
@@ -73,12 +73,9 @@ The interpreter will evaluate each expression in the file sequentially.
 
 ```
 (add 1 2 3)                    # Returns 6
-(mult 5 (sub 10 3))            # Returns 35
-(add 1 (mult 2 4))             # Returns 9
 (neg (abs -42))                # Returns -42
+(neg (add 1 2 3 (abs -5)))     # Returns -11
 ```
-
-For more examples, see the [INPUTS/task_1/](INPUTS/task_1/) directory.
 
 ## Limitations
 
