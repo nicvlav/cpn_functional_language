@@ -1,7 +1,13 @@
 # Special project files
 bison_flex.log
 INPUTS/*
+
+# Generated files
 cilisp
+lex.yy.c
+t.c
+y.tab.c
+y.tab.h
 
 # VSCode
 .vscode/*
@@ -61,3 +67,4 @@ dkms.conf
 
 # debug information files
 *.dwo
+
