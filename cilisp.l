@@ -36,6 +36,7 @@ quit {
 
 {func} {
     llog(FUNC);
+    yylval.ival = resolveFunc(yytext);
     return FUNC;
 }
 

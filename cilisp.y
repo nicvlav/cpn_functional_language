@@ -84,7 +84,7 @@ s_expr_list:
         $$ = $1;
     } | s_expr s_expr_list {
         ylog(s_expr_list, s_expr s_expr_list);
-        $$ = $1;
+        $$ = addExpressionToList($1, $2);
     };
 
 

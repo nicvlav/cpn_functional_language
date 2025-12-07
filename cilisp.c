@@ -84,9 +84,9 @@ AST_NODE *createNumberNode(double value, NUM_TYPE type)
         exit(1);
     }
 
-    // TODO complete the function
-    // Populate "node", the AST_NODE * created above with the argument data.
-    // node is a generic AST_NODE, don't forget to specify it is of type NUMBER_NODE
+    node->data.number.type = type;
+    node->data.number.value = value;
+    node->type = NUM_NODE_TYPE;
 
     return node;
 }
@@ -104,18 +104,86 @@ AST_NODE *createFunctionNode(FUNC_TYPE func, AST_NODE *opList)
         exit(1);
     }
 
-    // TODO complete the function
-    // Populate the allocated AST_NODE *node's data
+    node->data.function.func = func;
+    node->data.function.opList = opList;
+    node->type = FUNC_NODE_TYPE;
 
     return node;
 }
 
 AST_NODE *addExpressionToList(AST_NODE *newExpr, AST_NODE *exprList)
 {
-    // TODO complete the function
-    // at newExpr to the exprList as the head. return the resulting list's head.
+    if (!newExpr)
+    {
+        yyerror("NULL ast node passed into evalFuncNode for newExpr!");
+        return exprList; // unreachable but kills a clang-tidy warning
+    }
 
-    return NULL; // stub
+    newExpr->next = exprList;
+
+    return newExpr;
+}
+
+RET_VAL evalNegFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalNegFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    RET_VAL r = eval(node->data.function.opList);
+    r.value *= -1.0;
+    return r;
+}
+
+RET_VAL evalAbsFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalAbsFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    if (node->data.function.opList == NULL)
+    {
+        yyerror("No op data passed into evalNegFuncNode");
+        return NAN_RET_VAL;
+    }
+
+    RET_VAL r = eval(node->data.function.opList);
+    r.value = fabs(r.value);
+    return r;
+}
+
+RET_VAL evalAddFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalAddFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    AST_NODE *current;
+
+    if ((current = node->data.function.opList)  == NULL)
+    {
+        yyerror("No operands passed into evalAddFuncNode!");
+        return NAN_RET_VAL;
+    }
+
+    RET_VAL sum = eval(current);
+
+    while (current->next != NULL) {
+        RET_VAL newVal = eval(current->next);
+
+        // convert overall type to double if there is any double operand
+        if (sum.type == INT_TYPE && newVal.type == DOUBLE_TYPE) {
+            sum.type = DOUBLE_TYPE;
+        }
+
+        sum.value += newVal.value;
+        current = current->next;
+    }
+
+    return sum;
 }
 
 RET_VAL evalFuncNode(AST_NODE *node)
@@ -123,14 +191,30 @@ RET_VAL evalFuncNode(AST_NODE *node)
     if (!node)
     {
         yyerror("NULL ast node passed into evalFuncNode!");
-        return NAN_RET_VAL; // unreachable but kills a clang-tidy warning
+        return NAN_RET_VAL; 
     }
 
-    // TODO complete the function
-    // HINT:
-    // the helper functions that it calls will need to be defined above it
-    // because they are not declared in the .h file (and should not be)
+    if (node->type != FUNC_NODE_TYPE)
+    {
+        yyerror("Incorrect ast node passed into evalFuncNode!");
+        return NAN_RET_VAL;
+    }
 
+    switch (node->data.function.func)
+    {
+    case NEG_FUNC:
+        return evalNegFuncNode(node);
+    case ABS_FUNC:
+        return evalAbsFuncNode(node);    
+    case ADD_FUNC:
+        return evalAddFuncNode(node);
+    case CUSTOM_FUNC:
+        yyerror("Custom func not available yet but called in evalFuncNode!");
+    default:
+        yyerror("Invalid function type passed into evalFuncNode!");
+    }
+
+    // only reach here if default/error case was hit in switch
     return NAN_RET_VAL;
 }
 
@@ -142,9 +226,13 @@ RET_VAL evalNumNode(AST_NODE *node)
         return NAN_RET_VAL;
     }
 
-    // TODO complete the function
+    if (node->type != NUM_NODE_TYPE)
+    {
+        yyerror("Incorrect ast node passed into evalNumNode!");
+        return NAN_RET_VAL;
+    }
 
-    return NAN_RET_VAL;
+    return node->data.number;
 }
 
 RET_VAL eval(AST_NODE *node)
@@ -155,7 +243,15 @@ RET_VAL eval(AST_NODE *node)
         return NAN_RET_VAL;
     }
 
-    // TODO complete the function
+    switch (node->type)
+    {
+    case NUM_NODE_TYPE:
+        return evalNumNode(node);
+    case FUNC_NODE_TYPE:
+        return evalFuncNode(node);
+    default:
+        yyerror("Incorrect ast node passed into eval!");
+    }
 
     return NAN_RET_VAL;
 }
