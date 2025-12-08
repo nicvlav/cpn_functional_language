@@ -176,8 +176,8 @@ RET_VAL evalAddFuncNode(AST_NODE *node) {
 
     if (current == NULL)
     {
-        yyerror("No operands passed into evalAddFuncNode!");
-        return NAN_RET_VAL;
+        warning("No operands passed into evalAddFuncNode!");
+        return ZERO_RET_VAL;
     }
 
     RET_VAL result = eval(current);
@@ -208,8 +208,8 @@ RET_VAL evalSubFuncNode(AST_NODE *node) {
 
     if (current == NULL)
     {
-        yyerror("No operands passed into evalSubFuncNode!");
-        return NAN_RET_VAL;
+        warning("No operands passed into evalAddFuncNode!");
+        return ZERO_RET_VAL;
     }
 
     RET_VAL result = eval(current);
@@ -240,8 +240,8 @@ RET_VAL evalMultFuncNode(AST_NODE *node) {
 
     if (current == NULL)
     {
-        yyerror("No operands passed into evalMultFuncNode!");
-        return NAN_RET_VAL;
+        warning("No operands passed into evalMultFuncNode!");
+        return (RET_VAL){INT_TYPE, 1};
     }
 
     RET_VAL result = eval(current);
@@ -268,34 +268,26 @@ RET_VAL evalDivFuncNode(AST_NODE *node) {
         return NAN_RET_VAL; 
     }
 
-    AST_NODE *current = node->data.function.opList;
-
-    if (current == NULL)
+    // perhaps we can assume the eval will exit the program
+    // for now there will just be extra overhead here
+    if (node->data.function.opList == NULL)
     {
         yyerror("No operands passed into evalDivFuncNode!");
         return NAN_RET_VAL;
     }
 
-    RET_VAL result = eval(current);
+    RET_VAL left = eval(node->data.function.opList);
+    RET_VAL right = eval(node->data.function.opList->next);
 
-    while (current->next != NULL) {
-        RET_VAL newVal = eval(current->next);
-
-        // convert overall type to double if there is any double operand
-        if (result.type == INT_TYPE && newVal.type == DOUBLE_TYPE) {
-            result.type = DOUBLE_TYPE;
-        }
-
-        result.value /= newVal.value;
-        current = current->next;
+    if (left.type == DOUBLE_TYPE || right.type == DOUBLE_TYPE ) {
+        left.type = DOUBLE_TYPE;
+        left.value = left.value / right.value;
+    } else {
+        left.type = INT_TYPE;
+        left.value = round(left.value / right.value);
     }
 
-    // Dividing an integer by and integer can still give decimal points
-    if (result.type == INT_TYPE) {
-        result.value = round(result.value);
-    }
-
-    return result;
+    return left;
 }
 
 RET_VAL evalRemainderFuncNode(AST_NODE *node) {
@@ -315,18 +307,16 @@ RET_VAL evalRemainderFuncNode(AST_NODE *node) {
 
     RET_VAL left = eval(node->data.function.opList);
     RET_VAL right = eval(node->data.function.opList->next);
-    RET_VAL result;
-
-    result.value = fmod(left.value, right.value);
 
     if (left.type == DOUBLE_TYPE || right.type == DOUBLE_TYPE ) {
-        result.type = DOUBLE_TYPE;
+        left.type = DOUBLE_TYPE;
+        left.value = fmod(left.value, right.value);
     } else {
-        result.type = INT_TYPE;
-        result.value = round(result.value);
+        left.type = INT_TYPE;
+        left.value = round(fmod(left.value, right.value));
     }
 
-    return result;
+    return left;
 }
 
 RET_VAL evalExpFuncNode(AST_NODE *node) {
@@ -345,6 +335,9 @@ RET_VAL evalExpFuncNode(AST_NODE *node) {
     RET_VAL result = eval(node->data.function.opList);
     result.value = expf(result.value);
 
+    // Always make the final type a double
+    result.type = DOUBLE_TYPE;
+
     return result;
 }
 
@@ -362,6 +355,12 @@ RET_VAL evalExp2FuncNode(AST_NODE *node) {
     }
 
     RET_VAL result = eval(node->data.function.opList);
+
+    // a negative operand means its always a double
+    if (result.value < 0) {
+        result.type = DOUBLE_TYPE;
+    } 
+
     result.value = exp2f(result.value);
 
     return result;
@@ -384,18 +383,15 @@ RET_VAL evalPowFuncNode(AST_NODE *node) {
 
     RET_VAL left = eval(node->data.function.opList);
     RET_VAL right = eval(node->data.function.opList->next);
-    RET_VAL result;
 
-    result.value = pow(left.value, right.value);
+    // if right type is double we ensure left changes to double if needed
+    if (right.type == DOUBLE_TYPE ) {
+        left.type = DOUBLE_TYPE;
+    } 
 
-    if (left.type == DOUBLE_TYPE || right.type == DOUBLE_TYPE ) {
-        result.type = DOUBLE_TYPE;
-    } else {
-        result.type = INT_TYPE;
-        result.value = round(result.value);
-    }
+    left.value = pow(left.value, right.value);
 
-    return result;
+    return left;
 }
 
 RET_VAL evalLogFuncNode(AST_NODE *node) {
@@ -414,10 +410,8 @@ RET_VAL evalLogFuncNode(AST_NODE *node) {
     RET_VAL result = eval(node->data.function.opList);
     result.value = log(result.value);
 
-    // Log of a value < 10 will give decimal points
-    if (result.type == INT_TYPE) {
-        result.value = round(result.value);
-    }
+    // log always returns a double
+    result.type = DOUBLE_TYPE;
 
     return result;
 }
@@ -438,10 +432,8 @@ RET_VAL evalSqrtFuncNode(AST_NODE *node) {
     RET_VAL result = eval(node->data.function.opList);
     result.value = sqrt(result.value);
 
-    // Log of a value < 10 will give decimal points
-    if (result.type == INT_TYPE) {
-        result.value = round(result.value);
-    }
+    // log always returns a double
+    result.type = DOUBLE_TYPE;
 
     return result;
 }
@@ -462,10 +454,8 @@ RET_VAL evalCbrtFuncNode(AST_NODE *node) {
     RET_VAL result = eval(node->data.function.opList);
     result.value = cbrt(result.value);
 
-    // Log of a value < 10 will give decimal points
-    if (result.type == INT_TYPE) {
-        result.value = round(result.value);
-    }
+    // log always returns a double
+    result.type = DOUBLE_TYPE;
 
     return result;
 }
@@ -477,26 +467,23 @@ RET_VAL evalHypotFuncNode(AST_NODE *node) {
         return NAN_RET_VAL; 
     }
 
-    // perhaps we can assume the eval will exit the program
-    // for now there will just be extra overhead here
-    if (node->data.function.opList == NULL)
+    AST_NODE *current = node->data.function.opList;
+
+    if (current == NULL)
     {
-        yyerror("No operands passed into evalPowFuncNode!");
-        return NAN_RET_VAL;
+        warning("No operands passed into evalHypotFuncNode!");
+        return ZERO_RET_VAL;
     }
 
-    RET_VAL left = eval(node->data.function.opList);
-    RET_VAL right = eval(node->data.function.opList->next);
-    RET_VAL result;
+    RET_VAL result = eval(current);
 
-    result.value = hypot(left.value, right.value);
-
-    if (left.type == DOUBLE_TYPE || right.type == DOUBLE_TYPE ) {
-        result.type = DOUBLE_TYPE;
-    } else {
-        result.type = INT_TYPE;
-        result.value = round(result.value);
+    while (current->next != NULL) {
+        result.value += pow(eval(current->next).value, 2.0);
+        current = current->next;
     }
+
+    result.type = DOUBLE_TYPE;
+    result.value = sqrt(result.value);
 
     return result;
 }
@@ -521,14 +508,10 @@ RET_VAL evalMaxFuncNode(AST_NODE *node) {
     while (current->next != NULL) {
         RET_VAL newVal = eval(current->next);
 
-        // convert overall type to double if there is any double operand
-        if (result.type == INT_TYPE && newVal.type == DOUBLE_TYPE) {
-            result.type = DOUBLE_TYPE;
+        if (newVal.value > result.value) {
+            result = newVal;
         }
 
-        if (newVal.value > result.value) {
-            result.value = newVal.value;
-        }
         current = current->next;
     }
 
@@ -555,13 +538,8 @@ RET_VAL evalMinFuncNode(AST_NODE *node) {
     while (current->next != NULL) {
         RET_VAL newVal = eval(current->next);
 
-        // convert overall type to double if there is any double operand
-        if (result.type == INT_TYPE && newVal.type == DOUBLE_TYPE) {
-            result.type = DOUBLE_TYPE;
-        }
-
         if (newVal.value < result.value) {
-            result.value = newVal.value;
+            result = newVal;
         }
         current = current->next;
     }
