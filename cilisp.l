@@ -8,7 +8,7 @@
 
 %{
     #include "cilisp.h"
-    #define llog(token) {printf("LEX: %s \"%s\"\n", #token, yytext);}
+    #define llog(token) { /*printf("LEX: %s \"%s\"\n", #token, yytext);*/ }
 %}
 
 digit       [0-9]

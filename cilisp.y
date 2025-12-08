@@ -1,6 +1,6 @@
 %{
     #include "cilisp.h"
-    #define ylog(r, p) {printf("BISON: %s ::= %s \n", #r, #p);}
+    #define ylog(r, p) { /*printf("BISON: %s ::= %s \n", #r, #p); */}
     int yylex();
     void yyerror(char*, ...);
 %}
