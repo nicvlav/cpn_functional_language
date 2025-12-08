@@ -142,6 +142,12 @@ RET_VAL evalNegFuncNode(AST_NODE *node) {
         return NAN_RET_VAL; 
     }
 
+    if (node->data.function.opList == NULL)
+    {
+        warning("No operands passed into neg");
+        return NAN_RET_VAL;
+    }
+
     RET_VAL r = eval(node->data.function.opList);
     r.value *= -1.0;
     return r;
@@ -156,7 +162,7 @@ RET_VAL evalAbsFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList == NULL)
     {
-        yyerror("No op data passed into evalNegFuncNode");
+        warning("No operands passed into abs");
         return NAN_RET_VAL;
     }
 
@@ -176,7 +182,7 @@ RET_VAL evalAddFuncNode(AST_NODE *node) {
 
     if (current == NULL)
     {
-        warning("No operands passed into evalAddFuncNode!");
+        warning("No operands passed into add!");
         return ZERO_RET_VAL;
     }
 
@@ -200,33 +206,34 @@ RET_VAL evalAddFuncNode(AST_NODE *node) {
 RET_VAL evalSubFuncNode(AST_NODE *node) {
     if (!node)
     {
-        yyerror("NULL ast node passed into evalSubFuncNode!");
+        yyerror("NULL ast node passed into evalDivFuncNode!");
         return NAN_RET_VAL; 
     }
 
-    AST_NODE *current = node->data.function.opList;
-
-    if (current == NULL)
+    if (node->data.function.opList == NULL)
     {
-        warning("No operands passed into evalAddFuncNode!");
-        return ZERO_RET_VAL;
+        warning("No operands passed into sub!");
+        return NAN_RET_VAL;
     }
 
-    RET_VAL result = eval(current);
-
-    while (current->next != NULL) {
-        RET_VAL newVal = eval(current->next);
-
-        // convert overall type to double if there is any double operand
-        if (result.type == INT_TYPE && newVal.type == DOUBLE_TYPE) {
-            result.type = DOUBLE_TYPE;
-        }
-
-        result.value -= newVal.value;
-        current = current->next;
+    if (node->data.function.opList->next == NULL)
+    {
+        warning("Only one operand passed into sub!");
+        return NAN_RET_VAL;
     }
 
-    return result;
+    RET_VAL left = eval(node->data.function.opList);
+    RET_VAL right = eval(node->data.function.opList->next);
+
+    if (left.type == DOUBLE_TYPE || right.type == DOUBLE_TYPE ) {
+        left.type = DOUBLE_TYPE;
+    } else {
+        left.type = INT_TYPE;
+    }
+
+    left.value = round(left.value / right.value);
+
+    return left;
 }
 
 RET_VAL evalMultFuncNode(AST_NODE *node) {
@@ -240,7 +247,7 @@ RET_VAL evalMultFuncNode(AST_NODE *node) {
 
     if (current == NULL)
     {
-        warning("No operands passed into evalMultFuncNode!");
+        warning("No operands passed into mult!");
         return (RET_VAL){INT_TYPE, 1};
     }
 
@@ -268,11 +275,15 @@ RET_VAL evalDivFuncNode(AST_NODE *node) {
         return NAN_RET_VAL; 
     }
 
-    // perhaps we can assume the eval will exit the program
-    // for now there will just be extra overhead here
     if (node->data.function.opList == NULL)
     {
-        yyerror("No operands passed into evalDivFuncNode!");
+        warning("No operands passed into div!");
+        return NAN_RET_VAL;
+    }
+
+    if (node->data.function.opList->next == NULL)
+    {
+        warning("Only one operand passed into div!");
         return NAN_RET_VAL;
     }
 
@@ -297,11 +308,15 @@ RET_VAL evalRemainderFuncNode(AST_NODE *node) {
         return NAN_RET_VAL; 
     }
 
-    // perhaps we can assume the eval will exit the program
-    // for now there will just be extra overhead here
     if (node->data.function.opList == NULL)
     {
-        yyerror("No operands passed into evalPowFuncNode!");
+        warning("No operands passed into remainder!");
+        return NAN_RET_VAL;
+    }
+
+    if (node->data.function.opList->next == NULL)
+    {
+        warning("Only one operand passed into remainder!");
         return NAN_RET_VAL;
     }
 
@@ -328,7 +343,7 @@ RET_VAL evalExpFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList == NULL)
     {
-        yyerror("No operands passed into evalExpFuncNode!");
+        warning("No operands passed into exp!");
         return NAN_RET_VAL;
     }
 
@@ -344,13 +359,13 @@ RET_VAL evalExpFuncNode(AST_NODE *node) {
 RET_VAL evalExp2FuncNode(AST_NODE *node) {
     if (!node)
     {
-        yyerror("NULL ast node passed into a!");
+        yyerror("NULL ast node passed into evalExp2FuncNode!");
         return NAN_RET_VAL; 
     }
 
     if (node->data.function.opList == NULL)
     {
-        yyerror("No operands passed into a!");
+        warning("No operands passed into evalExp2FuncNode!");
         return NAN_RET_VAL;
     }
 
@@ -373,11 +388,15 @@ RET_VAL evalPowFuncNode(AST_NODE *node) {
         return NAN_RET_VAL; 
     }
 
-    // perhaps we can assume the eval will exit the program
-    // for now there will just be extra overhead here
     if (node->data.function.opList == NULL)
     {
-        yyerror("No operands passed into evalPowFuncNode!");
+        warning("No operands passed into evalPowFuncNode!");
+        return NAN_RET_VAL;
+    }
+
+    if (node->data.function.opList->next == NULL)
+    {
+        warning("Only one operand passed into pow!");
         return NAN_RET_VAL;
     }
 
@@ -397,13 +416,13 @@ RET_VAL evalPowFuncNode(AST_NODE *node) {
 RET_VAL evalLogFuncNode(AST_NODE *node) {
     if (!node)
     {
-        yyerror("NULL ast node passed into a!");
+        yyerror("NULL ast node passed into evalLogFuncNode!");
         return NAN_RET_VAL; 
     }
 
     if (node->data.function.opList == NULL)
     {
-        yyerror("No operands passed into a!");
+        warning("No operands passed into evalLogFuncNode!");
         return NAN_RET_VAL;
     }
 
@@ -419,13 +438,13 @@ RET_VAL evalLogFuncNode(AST_NODE *node) {
 RET_VAL evalSqrtFuncNode(AST_NODE *node) {
     if (!node)
     {
-        yyerror("NULL ast node passed into a!");
+        yyerror("NULL ast node passed into evalSqrtFuncNode!");
         return NAN_RET_VAL; 
     }
 
     if (node->data.function.opList == NULL)
     {
-        yyerror("No operands passed into a!");
+        warning("No operands passed into evalSqrtFuncNode!");
         return NAN_RET_VAL;
     }
 
@@ -441,13 +460,13 @@ RET_VAL evalSqrtFuncNode(AST_NODE *node) {
 RET_VAL evalCbrtFuncNode(AST_NODE *node) {
     if (!node)
     {
-        yyerror("NULL ast node passed into a!");
+        yyerror("NULL ast node passed into evalCbrtFuncNode!");
         return NAN_RET_VAL; 
     }
 
     if (node->data.function.opList == NULL)
     {
-        yyerror("No operands passed into a!");
+        warning("No operands passed into evalCbrtFuncNode!");
         return NAN_RET_VAL;
     }
 
@@ -499,7 +518,7 @@ RET_VAL evalMaxFuncNode(AST_NODE *node) {
 
     if (current == NULL)
     {
-        yyerror("No operands passed into evalMaxFuncNode!");
+        warning("No operands passed into evalMaxFuncNode!");
         return NAN_RET_VAL;
     }
 
@@ -521,7 +540,7 @@ RET_VAL evalMaxFuncNode(AST_NODE *node) {
 RET_VAL evalMinFuncNode(AST_NODE *node) {
     if (!node)
     {
-        yyerror("NULL ast node passed into evalMaxFuncNode!");
+        yyerror("NULL ast node passed into evalMinFuncNode!");
         return NAN_RET_VAL; 
     }
 
@@ -529,7 +548,7 @@ RET_VAL evalMinFuncNode(AST_NODE *node) {
 
     if (current == NULL)
     {
-        yyerror("No operands passed into evalMaxFuncNode!");
+        warning("No operands passed into evalMinFuncNode!");
         return NAN_RET_VAL;
     }
 
