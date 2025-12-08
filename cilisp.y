@@ -76,6 +76,7 @@ s_expr_section:
 
     } | {
         ylog(s_expr_section, );
+        $$ = NULL;
     };
 
 s_expr_list:
