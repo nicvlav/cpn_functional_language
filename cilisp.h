@@ -29,7 +29,19 @@ typedef enum func_type {
     NEG_FUNC,
     ABS_FUNC,
     ADD_FUNC,
-    // TODO complete the enum
+    SUB_FUNC,
+    MULT_FUNC,
+    DIV_FUNC,
+    REM_FUNC,
+    EXP_FUNC,
+    EXP2_FUNC,
+    POW_FUNC,
+    LOG_FUNC,
+    SQRT_FUNC,
+    CBRT_FUNC,
+    HYPOT_FUNC,
+    MAX_FUNC,
+    MIN_FUNC,
     CUSTOM_FUNC
 } FUNC_TYPE;
 

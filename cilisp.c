@@ -56,8 +56,19 @@ FUNC_TYPE resolveFunc(char *funcName)
             "neg",
             "abs",
             "add",
-            // TODO complete the array
-            // the empty string below must remain the last element
+            "sub",
+            "mult",
+            "div",
+            "remainder",
+            "exp",
+            "exp2",
+            "pow",
+            "log",
+            "sqrt",
+            "cbrt",
+            "hypot",
+            "max",
+            "min",
             ""
     };
     int i = 0;
@@ -161,29 +172,167 @@ RET_VAL evalAddFuncNode(AST_NODE *node) {
         return NAN_RET_VAL; 
     }
 
-    AST_NODE *current;
+    AST_NODE *current = node->data.function.opList;
 
-    if ((current = node->data.function.opList)  == NULL)
+    if (current == NULL)
     {
         yyerror("No operands passed into evalAddFuncNode!");
         return NAN_RET_VAL;
     }
 
-    RET_VAL sum = eval(current);
+    RET_VAL result = eval(current);
 
     while (current->next != NULL) {
         RET_VAL newVal = eval(current->next);
 
         // convert overall type to double if there is any double operand
-        if (sum.type == INT_TYPE && newVal.type == DOUBLE_TYPE) {
-            sum.type = DOUBLE_TYPE;
+        if (result.type == INT_TYPE && newVal.type == DOUBLE_TYPE) {
+            result.type = DOUBLE_TYPE;
         }
 
-        sum.value += newVal.value;
+        result.value += newVal.value;
         current = current->next;
     }
 
-    return sum;
+    return result;
+}
+
+RET_VAL evalSubFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalSubFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    AST_NODE *current = node->data.function.opList;
+
+    if (current == NULL)
+    {
+        yyerror("No operands passed into evalSubFuncNode!");
+        return NAN_RET_VAL;
+    }
+
+    RET_VAL result = eval(current);
+
+    while (current->next != NULL) {
+        RET_VAL newVal = eval(current->next);
+
+        // convert overall type to double if there is any double operand
+        if (result.type == INT_TYPE && newVal.type == DOUBLE_TYPE) {
+            result.type = DOUBLE_TYPE;
+        }
+
+        result.value -= newVal.value;
+        current = current->next;
+    }
+
+    return result;
+}
+
+RET_VAL evalMultFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalMultFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    AST_NODE *current = node->data.function.opList;
+
+    if (current == NULL)
+    {
+        yyerror("No operands passed into evalMultFuncNode!");
+        return NAN_RET_VAL;
+    }
+
+    RET_VAL result = eval(current);
+
+    while (current->next != NULL) {
+        RET_VAL newVal = eval(current->next);
+
+        // convert overall type to double if there is any double operand
+        if (result.type == INT_TYPE && newVal.type == DOUBLE_TYPE) {
+            result.type = DOUBLE_TYPE;
+        }
+
+        result.value *= newVal.value;
+        current = current->next;
+    }
+
+    return result;
+}
+
+RET_VAL evalDivFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalDivFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    AST_NODE *current = node->data.function.opList;
+
+    if (current == NULL)
+    {
+        yyerror("No operands passed into evalDivFuncNode!");
+        return NAN_RET_VAL;
+    }
+
+    RET_VAL result = eval(current);
+
+    while (current->next != NULL) {
+        RET_VAL newVal = eval(current->next);
+
+        // convert overall type to double if there is any double operand
+        if (result.type == INT_TYPE && newVal.type == DOUBLE_TYPE) {
+            result.type = DOUBLE_TYPE;
+        }
+
+        result.value /= newVal.value;
+        current = current->next;
+    }
+
+    // Dividing an integer by and integer can still give decimal points
+    if (result.type == INT_TYPE) {
+        result.value = round(result.value);
+    }
+
+    return result;
+}
+
+RET_VAL evalRemainderFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalRemainderFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    AST_NODE *left = node->data.function.opList;
+
+    if (left == NULL)
+    {
+        yyerror("No operands passed into evalRemainderFuncNode!");
+        return NAN_RET_VAL;
+    }
+
+    AST_NODE *right = left->next;
+
+    if (right == NULL)
+    {
+        yyerror("Only one operand passed into evalRemainderFuncNode!");
+        return NAN_RET_VAL;
+    }
+
+    RET_VAL result;
+
+    result.value = fmod(left->data.number.value, right->data.number.value);
+
+    if (left->data.number.type == DOUBLE_TYPE || right->data.number.type == DOUBLE_TYPE ) {
+        result.type = DOUBLE_TYPE;
+    } else {
+        result.type = INT_TYPE;
+        result.value = round(result.value);
+    }
+
+    return result;
 }
 
 RET_VAL evalFuncNode(AST_NODE *node)
@@ -207,7 +356,15 @@ RET_VAL evalFuncNode(AST_NODE *node)
     case ABS_FUNC:
         return evalAbsFuncNode(node);    
     case ADD_FUNC:
-        return evalAddFuncNode(node);
+        return evalAddFuncNode(node);    
+    case SUB_FUNC:
+        return evalSubFuncNode(node);
+    case MULT_FUNC:
+        return evalMultFuncNode(node);    
+    case DIV_FUNC:
+        return evalDivFuncNode(node);
+    case REM_FUNC:
+        return evalRemainderFuncNode(node);
     case CUSTOM_FUNC:
         yyerror("Custom func not available yet but called in evalFuncNode!");
     default:

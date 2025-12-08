@@ -8,4 +8,4 @@
 yacc -d cilisp.y
 lex cilisp.l
 cat cilisp.c lex.yy.c y.tab.c > t.c
-gcc -g t.c -o cilisp
+gcc -g t.c -o cilisp -lm
