@@ -95,8 +95,7 @@ AST_NODE *createNumberNode(double value, NUM_TYPE type)
         exit(1);
     }
 
-    node->data.number.type = type;
-    node->data.number.value = value;
+    node->data.number = (AST_NUMBER){type, value};
     node->type = NUM_NODE_TYPE;
 
     return node;
@@ -323,13 +322,11 @@ RET_VAL evalRemainderFuncNode(AST_NODE *node) {
     RET_VAL left = eval(node->data.function.opList);
     RET_VAL right = eval(node->data.function.opList->next);
 
-    if (left.type == DOUBLE_TYPE || right.type == DOUBLE_TYPE ) {
+    if (right.type == DOUBLE_TYPE ) {
         left.type = DOUBLE_TYPE;
-        left.value = fmod(left.value, right.value);
-    } else {
-        left.type = INT_TYPE;
-        left.value = round(fmod(left.value, right.value));
-    }
+    } 
+
+    left.value = fmod(left.value, right.value);
 
     return left;
 }
