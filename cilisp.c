@@ -224,13 +224,13 @@ RET_VAL evalSubFuncNode(AST_NODE *node) {
     RET_VAL left = eval(node->data.function.opList);
     RET_VAL right = eval(node->data.function.opList->next);
 
-    if (left.type == DOUBLE_TYPE || right.type == DOUBLE_TYPE ) {
+    if (right.type == DOUBLE_TYPE ) {
         left.type = DOUBLE_TYPE;
     } else {
         left.type = INT_TYPE;
     }
 
-    left.value = round(left.value / right.value);
+    left.value = left.value - right.value;
 
     return left;
 }
@@ -491,14 +491,16 @@ RET_VAL evalHypotFuncNode(AST_NODE *node) {
         return ZERO_RET_VAL;
     }
 
-    RET_VAL result = eval(current);
+    RET_VAL result;
+    result.value = 0.0;
+    result.type = DOUBLE_TYPE;
 
-    while (current->next != NULL) {
-        result.value += pow(eval(current->next).value, 2.0);
+    while (current != NULL) {
+        RET_VAL val =  eval(current);
+        result.value += pow(val.value, 2.0);
         current = current->next;
     }
 
-    result.type = DOUBLE_TYPE;
     result.value = sqrt(result.value);
 
     return result;
