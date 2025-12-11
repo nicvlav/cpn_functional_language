@@ -827,18 +827,45 @@ void freeNode(AST_NODE *node)
         return;
     }
 
-    // TODO complete the function
+    // Free specialized data for each type
+    switch (node->type)
+    {
+    // Function has special oplist data to free
+    case FUNC_NODE_TYPE:
+        freeNode(node->data.function.opList);
+        break;
+    
+    // Scope node has a child scope to free
+    case SCOPE_NODE_TYPE:
+        freeNode(node->data.scope.child);
+        break;
+    
+    // Symbol node has an idstring to free
+    case SYM_NODE_TYPE:
+        free(node->data.symbol.id);
+        break;
+    
+    // Number node has stack allocated numbers which take care of themselves 
+    case NUM_NODE_TYPE:
+    default:
+        break;
+    }
 
-    // look through the AST_NODE struct, decide what
-    // referenced data should have freeNode called on it
-    // (hint: it might be part of an s_expr_list, with more
-    // nodes following it in the list)
+    // Free the possible symbol table
+    SYMBOL_TABLE_NODE *symbol = node->symbolTable;
+    while (symbol != NULL) {
+        SYMBOL_TABLE_NODE *next = symbol->next;
+        free(symbol->id);
+        freeNode(symbol->value);
+        free(symbol);
+        symbol = next;
+    }
 
-    // if this node is FUNC_TYPE, it might have some operands
-    // to free as well (but this should probably be done in
-    // a call to another function, named something like
-    // freeFunctionNode)
+    // Free siblings
+    if (node->next != NULL) {
+        freeNode(node->next);
+    }
 
-    // and, finally,
+    // Free this node
     free(node);
 }
