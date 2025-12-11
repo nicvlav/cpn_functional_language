@@ -14,8 +14,9 @@
 
 
 #define BISON_FLEX_LOG_PATH "bison_flex.log"
-FILE* read_target;
-FILE* flex_bison_log_file;
+// Use extern to work with Makefile building
+extern FILE* read_target;
+extern FILE* flex_bison_log_file;
 size_t yyreadline(char **lineptr, size_t *n, FILE *stream, size_t n_terminate);
 
 
@@ -47,6 +48,7 @@ typedef enum func_type {
 
 
 FUNC_TYPE resolveFunc(char *);
+char * resolveSymbol(char *);
 
 
 typedef enum num_type {
@@ -69,25 +71,49 @@ typedef struct ast_function {
 } AST_FUNCTION;
 
 
-typedef enum ast_node_type {
+typedef enum {
     NUM_NODE_TYPE,
-    FUNC_NODE_TYPE
+    FUNC_NODE_TYPE,
+    SYM_NODE_TYPE,
+    SCOPE_NODE_TYPE
 } AST_NODE_TYPE;
 
+typedef struct {
+    char* id;
+} AST_SYMBOL;
+
+typedef struct {
+    struct ast_node *child;
+} AST_SCOPE;
 
 typedef struct ast_node {
     AST_NODE_TYPE type;
+    struct ast_node *parent;
+    struct symbol_table_node *symbolTable;
     union {
         AST_NUMBER number;
         AST_FUNCTION function;
+        AST_SYMBOL symbol;
+        AST_SCOPE scope;
     } data;
     struct ast_node *next;
 } AST_NODE;
 
+typedef struct symbol_table_node {
+    char *id;
+    AST_NODE *value;
+    struct symbol_table_node *next;
+} SYMBOL_TABLE_NODE;
 
 AST_NODE *createNumberNode(double value, NUM_TYPE type);
 AST_NODE *createFunctionNode(FUNC_TYPE func, AST_NODE *opList);
 AST_NODE *addExpressionToList(AST_NODE *newExpr, AST_NODE *exprList);
+AST_NODE *createSymbolReferenceNode(char* id);
+
+AST_NODE *createScopeNode(SYMBOL_TABLE_NODE *symbol, AST_NODE *child);
+SYMBOL_TABLE_NODE *createSymbolNode(char* value, AST_NODE *s_expr);
+SYMBOL_TABLE_NODE *addSymbolToList(SYMBOL_TABLE_NODE *newSymbol, SYMBOL_TABLE_NODE *symbolList);
+
 
 RET_VAL eval(AST_NODE *node);
 

@@ -3,6 +3,10 @@
 #define RED             "\033[31m"
 #define RESET_COLOR     "\033[0m"
 
+// Build shenanigans, define the extern variable here
+FILE* read_target;
+FILE* flex_bison_log_file;
+
 // yyerror:
 // Something went so wrong that the whole program should crash.
 // You should basically never call this unless an allocation fails.
@@ -83,6 +87,14 @@ FUNC_TYPE resolveFunc(char *funcName)
     return CUSTOM_FUNC;
 }
 
+char* resolveSymbol(char *symbol) {
+    char *copy = (char *) malloc(strlen(symbol) + 1);
+    if (copy != NULL) {
+      strcpy(copy, symbol);
+    }
+    return copy;
+}
+
 AST_NODE *createNumberNode(double value, NUM_TYPE type)
 {
     AST_NODE *node;
@@ -97,6 +109,52 @@ AST_NODE *createNumberNode(double value, NUM_TYPE type)
 
     node->data.number = (AST_NUMBER){type, value};
     node->type = NUM_NODE_TYPE;
+
+    return node;
+}
+
+SYMBOL_TABLE_NODE *createSymbolNode(char* value, AST_NODE *s_expr)
+{
+    SYMBOL_TABLE_NODE *node;
+    size_t nodeSize;
+
+    nodeSize = sizeof(SYMBOL_TABLE_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+    {
+        yyerror("Memory allocation failed!");
+        exit(1);
+    }
+
+    node->id = value;
+    node->value = s_expr;
+    return node;
+}
+
+SYMBOL_TABLE_NODE *addSymbolToList(SYMBOL_TABLE_NODE *newSymbol, SYMBOL_TABLE_NODE *symbolList) {
+    if (!newSymbol)
+    {
+        yyerror("NULL ast node passed into evalFuncNode for newExpr!");
+        return symbolList; // unreachable but kills a clang-tidy warning
+    }
+
+    newSymbol->next = symbolList;
+
+    return newSymbol;
+}
+
+AST_NODE *createSymbolReferenceNode(char* id) {
+    AST_NODE *node;
+    size_t nodeSize;
+
+    nodeSize = sizeof(AST_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+    {
+        yyerror("Memory allocation failed!");
+        exit(1);
+    }
+
+    node->type = SYM_NODE_TYPE;
+    node->data.symbol.id = id;
 
     return node;
 }
@@ -117,6 +175,47 @@ AST_NODE *createFunctionNode(FUNC_TYPE func, AST_NODE *opList)
     node->data.function.func = func;
     node->data.function.opList = opList;
     node->type = FUNC_NODE_TYPE;
+
+    // Set parent pointers for all nodes in list 
+    // so nested functions can access scope symbols
+    AST_NODE *current = opList;
+    while (current != NULL) {
+        current->parent = node;
+        current = current->next;
+    }
+
+    return node;
+}
+
+AST_NODE *createScopeNode(SYMBOL_TABLE_NODE *symbol, AST_NODE *child) {
+    AST_NODE *node;
+    size_t nodeSize;
+
+    nodeSize = sizeof(AST_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+    {
+        yyerror("Memory allocation failed!");
+        exit(1);
+    }
+
+    // Set the node type, the scope node has a single child
+    node->type = SCOPE_NODE_TYPE;
+    node->data.scope.child = child;
+
+    // Set the child's parent to this new scope node
+    child->parent = node;
+
+    // Assign the child scopes symbol table to the symbol (let section in the grammar)
+    child->symbolTable = symbol;
+
+    // All symbol siblings in the symbol table must have their parent set to the new child scope 
+    SYMBOL_TABLE_NODE *current = symbol;
+    while (current != NULL) {
+        if (current->value != NULL) {
+            current->value->parent = child;
+        }
+        current = current->next;
+    }
 
     return node;
 }
@@ -640,6 +739,43 @@ RET_VAL evalNumNode(AST_NODE *node)
     return node->data.number;
 }
 
+RET_VAL evalSymbolNode(AST_NODE *node)
+{
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalSymbolNode!");
+        return NAN_RET_VAL;
+    }
+
+    if (node->type != SYM_NODE_TYPE)
+    {
+        yyerror("Incorrect ast node passed into evalSymbolNode!");
+        return NAN_RET_VAL;
+    }
+
+    // Search through scopes to find the cloest symbol defintion
+    AST_NODE *currentScope = node;
+
+    while (currentScope != NULL) { 
+        if (currentScope->symbolTable != NULL) {
+            SYMBOL_TABLE_NODE *symbol = currentScope->symbolTable;
+            while (symbol != NULL) {
+                if (strcmp(symbol->id, node->data.symbol.id) == 0) {
+                    return eval(symbol->value);
+                }
+                symbol = symbol->next;
+            }
+        }
+
+        // Look further up the tree next iteration
+        currentScope = currentScope->parent;
+    }
+
+    // Symbol not found
+    warning("Undefined symbol: %s", node->data.symbol.id);
+    return NAN_RET_VAL;
+}
+
 RET_VAL eval(AST_NODE *node)
 {
     if (!node)
@@ -654,6 +790,10 @@ RET_VAL eval(AST_NODE *node)
         return evalNumNode(node);
     case FUNC_NODE_TYPE:
         return evalFuncNode(node);
+    case SYM_NODE_TYPE:
+        return evalSymbolNode(node);
+    case SCOPE_NODE_TYPE:
+        return eval(node->data.scope.child);
     default:
         yyerror("Incorrect ast node passed into eval!");
     }
