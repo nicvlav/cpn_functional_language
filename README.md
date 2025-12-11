@@ -43,7 +43,7 @@ Integer : 6
 
 **Scoped Variables:**
 ```lisp
-( (let (x 1)) ( (let (y 2)) (add x y) ) )
- 
+> ( (let (x 1)) ( (let (y 2)) (add x y) ) )
+Integer : 3
 ```
-Returns 3. Supports nested scoping through `let` blocks.
+Supports nested scoping through `let` blocks.
