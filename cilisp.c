@@ -1,7 +1,9 @@
 #include "cilisp.h"
+#include <ctype.h>
 
 #define RED             "\033[31m"
 #define RESET_COLOR     "\033[0m"
+#define MAX_READ_CHARS  255
 
 // Build shenanigans, define the extern variable here
 FILE* read_target;
@@ -73,6 +75,12 @@ FUNC_TYPE resolveFunc(char *funcName)
             "hypot",
             "max",
             "min",
+            "rand",
+            "read",
+            "equal",
+            "less",
+            "greater",
+            "print",
             ""
     };
     int i = 0;
@@ -735,6 +743,203 @@ RET_VAL evalMinFuncNode(AST_NODE *node) {
     return result;
 }
 
+RET_VAL evalRandFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalMinFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    if (node->data.function.opList != NULL)
+    {
+        warning("rand called with extra (ignored) operands!!");
+    }
+
+    return (RET_VAL){DOUBLE_TYPE, (double) rand() / (double)RAND_MAX};
+}
+
+// Helper to do a strict parse of the character before using strtod
+// strtod can return the reading early on a bad char but still give some value
+RET_VAL parseReadValue(const char *line) {
+
+    const char* ptr = line;
+    size_t i = 0;
+
+    // Skip optional leading +/- sign
+    if (*ptr == '+' || *ptr == '-') ptr++;
+
+    // Must have at least one digit
+    if (*ptr < '0' || *ptr > '9') {
+        warning("Invalid read entry! Number must start with a digit");
+        return NAN_RET_VAL;
+    }
+
+    while (*ptr >= '0' && *ptr <= '9') ptr++;
+
+    if (*ptr == '.') {
+        ptr++;
+
+        while (*ptr >= '0' && *ptr <= '9') ptr++;
+
+        if (*ptr != '\0') {
+            warning("Invalid read entry! Non digits detected!");
+            return NAN_RET_VAL;
+        }
+
+        return (RET_VAL){DOUBLE_TYPE, strtod(line, NULL)};
+
+    } else if (*ptr == '\0') {
+        return (RET_VAL){INT_TYPE, strtod(line, NULL)};
+    }
+
+    warning("Invalid read entry! Non digits detected!");
+    return NAN_RET_VAL; 
+}
+
+
+RET_VAL evalReadFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalMinFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    if (node->data.function.opList != NULL)
+    {
+        warning("read called with extra (ignored) operands!!");
+    }
+
+    // hardcoded maximum line size of 256
+    char line[MAX_READ_CHARS + 1];
+
+    fprintf(stdout, "read :: ");
+
+    if (fgets(line, sizeof(line), read_target) == NULL) {
+        warning("read could not read line");
+        return NAN_RET_VAL; 
+    }
+
+    line[strcspn(line, "\n")] = '\0';
+    line[MAX_READ_CHARS] = '\0';
+
+    return parseReadValue(line);
+}
+
+RET_VAL evalEqualFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalEqualFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    AST_NODE *current = node->data.function.opList;
+
+    if (current == NULL)
+    {
+        warning("No operands passed into equal!");
+        return ZERO_RET_VAL;
+    }
+
+    RET_VAL result = eval(current);
+
+    while (current->next != NULL) {
+        RET_VAL newVal = eval(current->next);
+
+        if (newVal.value != result.value) {
+              return ZERO_RET_VAL;
+        }
+
+        current = current->next;
+    }
+
+    return (RET_VAL){INT_TYPE, 1};
+}
+
+RET_VAL evalLessFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalEqualFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    AST_NODE *current = node->data.function.opList;
+
+    if (current == NULL)
+    {
+        warning("No operands passed into equal!");
+        return ZERO_RET_VAL;
+    }
+
+    RET_VAL result = eval(current);
+
+    while (current->next != NULL) {
+        RET_VAL newVal = eval(current->next);
+
+        if (newVal.value <= result.value) {
+              return ZERO_RET_VAL;
+        }
+
+        current = current->next;
+    }
+
+    return (RET_VAL){INT_TYPE, 1};
+}
+
+RET_VAL evalGreaterFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalEqualFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    AST_NODE *current = node->data.function.opList;
+
+    if (current == NULL)
+    {
+        warning("No operands passed into equal!");
+        return ZERO_RET_VAL;
+    }
+
+    RET_VAL result = eval(current);
+
+    while (current->next != NULL) {
+        RET_VAL newVal = eval(current->next);
+
+        if (newVal.value >= result.value) {
+              return ZERO_RET_VAL;
+        }
+
+        current = current->next;
+    }
+
+    return (RET_VAL){INT_TYPE, 1};
+}
+
+RET_VAL evalPrintFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalPrintFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    if (node->data.function.opList == NULL)
+    {
+        warning("No operands passed into print");
+        return NAN_RET_VAL;
+    }
+
+    if (node->data.function.opList->next != NULL)
+    {
+        warning("print called with extra (ignored) operands!!");
+    }
+
+    RET_VAL r = eval(node->data.function.opList);
+
+    printRetVal(r);
+
+    return r;
+}
+
 RET_VAL evalFuncNode(AST_NODE *node)
 {
     if (!node)
@@ -782,7 +987,19 @@ RET_VAL evalFuncNode(AST_NODE *node)
     case MAX_FUNC:
         return evalMaxFuncNode(node);
     case MIN_FUNC:
-        return evalMinFuncNode(node);
+        return evalMinFuncNode(node);    
+    case RAND_FUNC:
+        return evalRandFuncNode(node);
+    case READ_FUNC:
+        return evalReadFuncNode(node);
+    case EQUAL_FUNC:
+        return evalEqualFuncNode(node);    
+    case LESS_FUNC:
+        return evalLessFuncNode(node);    
+    case GREATER_FUNC:
+        return evalGreaterFuncNode(node);    
+    case PRINT_FUNC:
+        return evalPrintFuncNode(node);
     case CUSTOM_FUNC:
         yyerror("Custom func not available yet but called in evalFuncNode!");
     default:

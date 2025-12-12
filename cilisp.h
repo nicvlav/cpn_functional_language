@@ -43,6 +43,12 @@ typedef enum func_type {
     HYPOT_FUNC,
     MAX_FUNC,
     MIN_FUNC,
+    RAND_FUNC,
+    READ_FUNC,
+    EQUAL_FUNC,
+    LESS_FUNC,
+    GREATER_FUNC,
+    PRINT_FUNC,
     CUSTOM_FUNC
 } FUNC_TYPE;
 
