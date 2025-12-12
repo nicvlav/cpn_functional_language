@@ -11,10 +11,13 @@
     #define llog(token) { /*printf("LEX: %s \"%s\"\n", #token, yytext);*/ }
 %}
 
-digit       [0-9]
-int         [+-]?{digit}+
-double      [+-]?{digit}+\.{digit}*
-func        neg|abs|add|sub|mult|div|remainder|exp|exp2|pow|log|sqrt|cbrt|hypot|max|min
+digit           [0-9]
+letter          [a-zA-Z_$]
+letter_or_digit [a-zA-Z_$0-9]
+int             [+-]?{digit}+
+double          [+-]?{digit}+\.{digit}*
+func            neg|abs|add|sub|mult|div|remainder|exp|exp2|pow|log|sqrt|cbrt|hypot|max|min
+symbol          {letter}+{letter_or_digit}*
 %%
 
 {int} {
@@ -38,6 +41,17 @@ quit {
     llog(FUNC);
     yylval.ival = resolveFunc(yytext);
     return FUNC;
+}
+
+let {
+    llog(LET);
+    return LET;
+}
+
+{symbol} {
+    llog(SYMBOL);
+    yylval.sval = resolveSymbol(yytext);
+    return SYMBOL;
 }
 
 [(] {
