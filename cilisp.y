@@ -13,7 +13,7 @@
     struct symbol_table_node *symbolNode;
 };
 
-%token <ival> FUNC
+%token <ival> FUNC TYPE
 %token <dval> INT DOUBLE
 %token <sval> SYMBOL
 %token QUIT EOL EOFT LPAREN RPAREN LET
@@ -96,7 +96,11 @@ let_elem:
     LPAREN SYMBOL s_expr RPAREN  { 
         ylog(LPAREN, SYMBOL s_expr RPAREN);
         $$ = createSymbolNode($2, $3);
+    } |  LPAREN TYPE SYMBOL s_expr RPAREN  { 
+        ylog(LPAREN, SYMBOL s_expr RPAREN);
+        $$ = createTypecastSymbolNode($3, $4, $2);
     };
+
 
 s_expr_section:
     s_expr_list { 

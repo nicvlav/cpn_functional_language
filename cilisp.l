@@ -18,6 +18,7 @@ int             [+-]?{digit}+
 double          [+-]?{digit}+\.{digit}*
 func            neg|abs|add|sub|mult|div|remainder|exp|exp2|pow|log|sqrt|cbrt|hypot|max|min
 symbol          {letter}+{letter_or_digit}*
+type            int|double
 %%
 
 {int} {
@@ -37,6 +38,14 @@ quit {
     return QUIT;
 }
 
+
+{type} {
+    llog(TYPE);
+    yylval.ival = resolveType(yytext);
+    return TYPE;
+}
+
+
 {func} {
     llog(FUNC);
     yylval.ival = resolveFunc(yytext);
@@ -50,7 +59,7 @@ let {
 
 {symbol} {
     llog(SYMBOL);
-    yylval.sval = resolveSymbol(yytext);
+    yylval.sval = cloneString(yytext);
     return SYMBOL;
 }
 

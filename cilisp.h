@@ -48,13 +48,17 @@ typedef enum func_type {
 
 
 FUNC_TYPE resolveFunc(char *);
-char * resolveSymbol(char *);
 
+// helper to copy a string to a new dynamically allocated char array
+char * cloneString(char *);
 
 typedef enum num_type {
     INT_TYPE,
     DOUBLE_TYPE,
+    NO_TYPE
 } NUM_TYPE;
+
+NUM_TYPE resolveType(char *);
 
 
 typedef struct {
@@ -102,6 +106,7 @@ typedef struct ast_node {
 typedef struct symbol_table_node {
     char *id;
     AST_NODE *value;
+    NUM_TYPE type;
     struct symbol_table_node *next;
 } SYMBOL_TABLE_NODE;
 
@@ -112,8 +117,8 @@ AST_NODE *createSymbolReferenceNode(char* id);
 
 AST_NODE *createScopeNode(SYMBOL_TABLE_NODE *symbol, AST_NODE *child);
 SYMBOL_TABLE_NODE *createSymbolNode(char* value, AST_NODE *s_expr);
+SYMBOL_TABLE_NODE *createTypecastSymbolNode(char* value, AST_NODE *s_expr, NUM_TYPE type);
 SYMBOL_TABLE_NODE *addSymbolToList(SYMBOL_TABLE_NODE *newSymbol, SYMBOL_TABLE_NODE *symbolList);
-
 
 RET_VAL eval(AST_NODE *node);
 

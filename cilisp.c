@@ -87,7 +87,26 @@ FUNC_TYPE resolveFunc(char *funcName)
     return CUSTOM_FUNC;
 }
 
-char* resolveSymbol(char *symbol) {
+
+NUM_TYPE resolveType(char *typename) {
+    char *typenames[] = {
+            "int",
+            "double",
+            ""
+    };
+    int i = 0;
+    while (typenames[i][0] != '\0')
+    {
+        if (strcmp(typenames[i], typename) == 0)
+        {
+            return i;
+        }
+        i++;
+    }
+    return NO_TYPE;
+}
+
+char* cloneString(char *symbol) {
     char *copy = (char *) malloc(strlen(symbol) + 1);
     if (copy != NULL) {
       strcpy(copy, symbol);
@@ -113,8 +132,7 @@ AST_NODE *createNumberNode(double value, NUM_TYPE type)
     return node;
 }
 
-SYMBOL_TABLE_NODE *createSymbolNode(char* value, AST_NODE *s_expr)
-{
+SYMBOL_TABLE_NODE *createTypecastSymbolNode(char* value, AST_NODE *s_expr, NUM_TYPE type) {
     SYMBOL_TABLE_NODE *node;
     size_t nodeSize;
 
@@ -127,7 +145,15 @@ SYMBOL_TABLE_NODE *createSymbolNode(char* value, AST_NODE *s_expr)
 
     node->id = value;
     node->value = s_expr;
+    node->type = type;
+
     return node;
+
+}
+
+SYMBOL_TABLE_NODE *createSymbolNode(char* value, AST_NODE *s_expr)
+{
+    return createTypecastSymbolNode(value, s_expr, NO_TYPE);
 }
 
 SYMBOL_TABLE_NODE *addSymbolToList(SYMBOL_TABLE_NODE *newSymbol, SYMBOL_TABLE_NODE *symbolList) {
@@ -784,6 +810,28 @@ RET_VAL evalNumNode(AST_NODE *node)
     return node->data.number;
 }
 
+RET_VAL evalSymbolTableNode(SYMBOL_TABLE_NODE *symbol)
+{   
+    RET_VAL result = eval(symbol->value);
+
+    if (symbol->type == NO_TYPE || symbol->type == result.type) {
+        return result;
+    }
+
+    // Symbol type would be int if this is true
+    // since the method would return early if types matched
+    if (result.type == DOUBLE_TYPE)
+    {
+        warning("Precision loss on int cast from %.2lf to %d", 
+            result.value, (int) result.value);
+        result.value = floor(result.value);
+    } 
+
+    result.type = symbol->type;
+
+    return result;
+}
+
 RET_VAL evalSymbolNode(AST_NODE *node)
 {
     if (!node)
@@ -806,7 +854,7 @@ RET_VAL evalSymbolNode(AST_NODE *node)
             SYMBOL_TABLE_NODE *symbol = currentScope->symbolTable;
             while (symbol != NULL) {
                 if (strcmp(symbol->id, node->data.symbol.id) == 0) {
-                    return eval(symbol->value);
+                    return evalSymbolTableNode(symbol);
                 }
                 symbol = symbol->next;
             }
