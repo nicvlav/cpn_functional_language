@@ -223,7 +223,7 @@ RET_VAL evalSubFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList->next->next != NULL)
     {
-        warning("WARNING: sub called with extra (ignored) operands!!");
+        warning("sub called with extra (ignored) operands!!");
     }
 
     RET_VAL left = eval(node->data.function.opList);
@@ -293,7 +293,7 @@ RET_VAL evalDivFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList->next->next != NULL)
     {
-        warning("WARNING: div called with extra (ignored) operands!!");
+        warning("div called with extra (ignored) operands!!");
     }
 
     RET_VAL left = eval(node->data.function.opList);
@@ -331,7 +331,7 @@ RET_VAL evalRemainderFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList->next->next != NULL)
     {
-        warning("WARNING: remainder called with extra (ignored) operands!!");
+        warning("remainder called with extra (ignored) operands!!");
     }
 
     RET_VAL left = eval(node->data.function.opList);
@@ -361,7 +361,7 @@ RET_VAL evalExpFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList->next != NULL)
     {
-        warning("WARNING: exp called with extra (ignored) operands!!");
+        warning("exp called with extra (ignored) operands!!");
     }
 
     RET_VAL result = eval(node->data.function.opList);
@@ -388,7 +388,7 @@ RET_VAL evalExp2FuncNode(AST_NODE *node) {
 
     if (node->data.function.opList->next != NULL)
     {
-        warning("WARNING: exp2 called with extra (ignored) operands!!");
+        warning("exp2 called with extra (ignored) operands!!");
     }
 
     RET_VAL result = eval(node->data.function.opList);
@@ -424,7 +424,7 @@ RET_VAL evalPowFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList->next->next != NULL)
     {
-        warning("WARNING: pow called with extra (ignored) operands!!");
+        warning("pow called with extra (ignored) operands!!");
     }
 
     RET_VAL left = eval(node->data.function.opList);
@@ -455,7 +455,7 @@ RET_VAL evalLogFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList->next != NULL)
     {
-        warning("WARNING: log called with extra (ignored) operands!!");
+        warning("log called with extra (ignored) operands!!");
     }
 
     RET_VAL result = eval(node->data.function.opList);
@@ -482,7 +482,7 @@ RET_VAL evalSqrtFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList->next != NULL)
     {
-        warning("WARNING: sqrt called with extra (ignored) operands!!");
+        warning("sqrt called with extra (ignored) operands!!");
     }
 
     RET_VAL result = eval(node->data.function.opList);
@@ -509,7 +509,7 @@ RET_VAL evalCbrtFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList->next != NULL)
     {
-        warning("WARNING: cbrt called with extra (ignored) operands!!");
+        warning("cbrt called with extra (ignored) operands!!");
     }
 
     RET_VAL result = eval(node->data.function.opList);
