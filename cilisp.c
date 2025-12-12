@@ -221,6 +221,11 @@ RET_VAL evalSubFuncNode(AST_NODE *node) {
         return NAN_RET_VAL;
     }
 
+    if (node->data.function.opList->next->next != NULL)
+    {
+        warning("WARNING: sub called with extra (ignored) operands!!");
+    }
+
     RET_VAL left = eval(node->data.function.opList);
     RET_VAL right = eval(node->data.function.opList->next);
 
@@ -286,6 +291,11 @@ RET_VAL evalDivFuncNode(AST_NODE *node) {
         return NAN_RET_VAL;
     }
 
+    if (node->data.function.opList->next->next != NULL)
+    {
+        warning("WARNING: div called with extra (ignored) operands!!");
+    }
+
     RET_VAL left = eval(node->data.function.opList);
     RET_VAL right = eval(node->data.function.opList->next);
 
@@ -294,7 +304,7 @@ RET_VAL evalDivFuncNode(AST_NODE *node) {
         left.value = left.value / right.value;
     } else {
         left.type = INT_TYPE;
-        left.value = round(left.value / right.value);
+        left.value = floor(left.value / right.value);
     }
 
     return left;
@@ -317,6 +327,11 @@ RET_VAL evalRemainderFuncNode(AST_NODE *node) {
     {
         warning("Only one operand passed into remainder!");
         return NAN_RET_VAL;
+    }
+
+    if (node->data.function.opList->next->next != NULL)
+    {
+        warning("WARNING: remainder called with extra (ignored) operands!!");
     }
 
     RET_VAL left = eval(node->data.function.opList);
@@ -344,6 +359,11 @@ RET_VAL evalExpFuncNode(AST_NODE *node) {
         return NAN_RET_VAL;
     }
 
+    if (node->data.function.opList->next != NULL)
+    {
+        warning("WARNING: exp called with extra (ignored) operands!!");
+    }
+
     RET_VAL result = eval(node->data.function.opList);
     result.value = expf(result.value);
 
@@ -362,8 +382,13 @@ RET_VAL evalExp2FuncNode(AST_NODE *node) {
 
     if (node->data.function.opList == NULL)
     {
-        warning("No operands passed into evalExp2FuncNode!");
+        warning("No operands passed into exp2!");
         return NAN_RET_VAL;
+    }
+
+    if (node->data.function.opList->next != NULL)
+    {
+        warning("WARNING: exp2 called with extra (ignored) operands!!");
     }
 
     RET_VAL result = eval(node->data.function.opList);
@@ -387,7 +412,7 @@ RET_VAL evalPowFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList == NULL)
     {
-        warning("No operands passed into evalPowFuncNode!");
+        warning("No operands passed into pow!");
         return NAN_RET_VAL;
     }
 
@@ -395,6 +420,11 @@ RET_VAL evalPowFuncNode(AST_NODE *node) {
     {
         warning("Only one operand passed into pow!");
         return NAN_RET_VAL;
+    }
+
+    if (node->data.function.opList->next->next != NULL)
+    {
+        warning("WARNING: pow called with extra (ignored) operands!!");
     }
 
     RET_VAL left = eval(node->data.function.opList);
@@ -419,8 +449,13 @@ RET_VAL evalLogFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList == NULL)
     {
-        warning("No operands passed into evalLogFuncNode!");
+        warning("No operands passed into log!");
         return NAN_RET_VAL;
+    }
+
+    if (node->data.function.opList->next != NULL)
+    {
+        warning("WARNING: log called with extra (ignored) operands!!");
     }
 
     RET_VAL result = eval(node->data.function.opList);
@@ -441,8 +476,13 @@ RET_VAL evalSqrtFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList == NULL)
     {
-        warning("No operands passed into evalSqrtFuncNode!");
+        warning("No operands passed into sqrt!");
         return NAN_RET_VAL;
+    }
+
+    if (node->data.function.opList->next != NULL)
+    {
+        warning("WARNING: sqrt called with extra (ignored) operands!!");
     }
 
     RET_VAL result = eval(node->data.function.opList);
@@ -463,8 +503,13 @@ RET_VAL evalCbrtFuncNode(AST_NODE *node) {
 
     if (node->data.function.opList == NULL)
     {
-        warning("No operands passed into evalCbrtFuncNode!");
+        warning("No operands passed into cbrt!");
         return NAN_RET_VAL;
+    }
+
+    if (node->data.function.opList->next != NULL)
+    {
+        warning("WARNING: cbrt called with extra (ignored) operands!!");
     }
 
     RET_VAL result = eval(node->data.function.opList);
@@ -487,7 +532,7 @@ RET_VAL evalHypotFuncNode(AST_NODE *node) {
 
     if (current == NULL)
     {
-        warning("No operands passed into evalHypotFuncNode!");
+        warning("No operands passed into hypot!");
         return ZERO_RET_VAL;
     }
 
@@ -517,7 +562,7 @@ RET_VAL evalMaxFuncNode(AST_NODE *node) {
 
     if (current == NULL)
     {
-        warning("No operands passed into evalMaxFuncNode!");
+        warning("No operands passed into max!");
         return NAN_RET_VAL;
     }
 
@@ -547,7 +592,7 @@ RET_VAL evalMinFuncNode(AST_NODE *node) {
 
     if (current == NULL)
     {
-        warning("No operands passed into evalMinFuncNode!");
+        warning("No operands passed into min!");
         return NAN_RET_VAL;
     }
 
@@ -679,7 +724,6 @@ void printRetVal(RET_VAL val)
 }
 
 
-
 void freeNode(AST_NODE *node)
 {
     if (!node)
@@ -687,18 +731,25 @@ void freeNode(AST_NODE *node)
         return;
     }
 
-    // TODO complete the function
+    // Free specialized data for each type
+    switch (node->type)
+    {
+    // Function has special oplist data to free
+    case FUNC_NODE_TYPE:
+        freeNode(node->data.function.opList);
+        break;
+    
+    // Number node has stack allocated numbers which take care of themselves 
+    case NUM_NODE_TYPE:
+    default:
+        break;
+    }
 
-    // look through the AST_NODE struct, decide what
-    // referenced data should have freeNode called on it
-    // (hint: it might be part of an s_expr_list, with more
-    // nodes following it in the list)
+    // Free siblings
+    if (node->next != NULL) {
+        freeNode(node->next);
+    }
 
-    // if this node is FUNC_TYPE, it might have some operands
-    // to free as well (but this should probably be done in
-    // a call to another function, named something like
-    // freeFunctionNode)
-
-    // and, finally,
+    // Free this node
     free(node);
 }
