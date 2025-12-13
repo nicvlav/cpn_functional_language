@@ -39,7 +39,19 @@ Integer : 6
 
 **Roots:** `sqrt`, `cbrt`, `hypot`
 
-**Comparison:** `max`, `min`
+**Comparison:** `max`, `min`, `equal`, `less`, `greater`
+
+**Conditionals:** `cond` - ternary operator for branching
+
+**I/O:** `read`, `print`, `rand`
+
+**Symbol Types:**
+```lisp
+> ( (let (int x 5.7)) x )
+Precision loss on int cast from 5.7 to 5
+Integer : 5
+```
+Declare typed symbols: `int`, `double`
 
 **Scoped Variables:**
 ```lisp
