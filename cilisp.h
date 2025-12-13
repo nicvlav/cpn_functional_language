@@ -76,6 +76,7 @@ typedef AST_NUMBER RET_VAL;
 
 
 typedef struct ast_function {
+    char *id;
     FUNC_TYPE func;
     struct ast_node *opList;
 } AST_FUNCTION;
@@ -117,22 +118,43 @@ typedef struct ast_node {
     struct ast_node *next;
 } AST_NODE;
 
+typedef enum {
+    VAR_TYPE,
+    LAMBDA_TYPE,
+    ARG_TYPE
+} SYMBOL_TYPE;
+
 typedef struct symbol_table_node {
     char *id;
     AST_NODE *value;
+    SYMBOL_TYPE symbolType;
     NUM_TYPE type;
+    struct stack_node *stack;
+    struct symbol_table_node *arg_list;
     struct symbol_table_node *next;
 } SYMBOL_TABLE_NODE;
 
+typedef struct stack_node {
+    RET_VAL value;
+    struct stack_node *next;
+} STACK_NODE;
+
+STACK_NODE* createStackNode(RET_VAL val);
+
 AST_NODE *createNumberNode(double value, NUM_TYPE type);
 AST_NODE *createCondNode(AST_NODE *conditional, AST_NODE *true_node, AST_NODE *false_node);
-AST_NODE *createFunctionNode(FUNC_TYPE func, AST_NODE *opList);
+AST_NODE *createFunctionNode(FUNC_TYPE func, AST_NODE *opList, char* identifer);
+AST_NODE *createCoreFunctionNode(FUNC_TYPE func, AST_NODE *opList);
+AST_NODE *createLamdaFunctionNode(char* identifer, AST_NODE *opList);
 AST_NODE *addExpressionToList(AST_NODE *newExpr, AST_NODE *exprList);
 AST_NODE *createSymbolReferenceNode(char* id);
-
 AST_NODE *createScopeNode(SYMBOL_TABLE_NODE *symbol, AST_NODE *child);
-SYMBOL_TABLE_NODE *createSymbolNode(char* value, AST_NODE *s_expr);
-SYMBOL_TABLE_NODE *createTypecastSymbolNode(char* value, AST_NODE *s_expr, NUM_TYPE type);
+
+SYMBOL_TABLE_NODE *createTypecastSymbolVarNode(char* value, AST_NODE *s_expr, NUM_TYPE type);
+SYMBOL_TABLE_NODE *createSymbolVarNode(char* value, AST_NODE *s_expr);
+SYMBOL_TABLE_NODE *createTypecastSymbolLamdaNode(char* value, SYMBOL_TABLE_NODE *arg_list, AST_NODE *s_expr, NUM_TYPE type);
+SYMBOL_TABLE_NODE *createSymbolLamdaNode(char* value, SYMBOL_TABLE_NODE *arg_list, AST_NODE *s_expr);
+SYMBOL_TABLE_NODE *createSymbolArgNode(char* value);
 SYMBOL_TABLE_NODE *addSymbolToList(SYMBOL_TABLE_NODE *newSymbol, SYMBOL_TABLE_NODE *symbolList);
 
 RET_VAL eval(AST_NODE *node);

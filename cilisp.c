@@ -140,7 +140,25 @@ AST_NODE *createNumberNode(double value, NUM_TYPE type)
     return node;
 }
 
-SYMBOL_TABLE_NODE *createTypecastSymbolNode(char* value, AST_NODE *s_expr, NUM_TYPE type) {
+SYMBOL_TABLE_NODE *createSymbolArgNode(char* value) {
+    SYMBOL_TABLE_NODE *node;
+    size_t nodeSize;
+
+    nodeSize = sizeof(SYMBOL_TABLE_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+    {
+        yyerror("Memory allocation failed!");
+        exit(1);
+    }
+
+    node->id = value;
+    node->symbolType = ARG_TYPE;
+
+    return node;
+
+}
+
+SYMBOL_TABLE_NODE *createTypecastSymbolVarNode(char* value, AST_NODE *s_expr, NUM_TYPE type) {
     SYMBOL_TABLE_NODE *node;
     size_t nodeSize;
 
@@ -154,14 +172,38 @@ SYMBOL_TABLE_NODE *createTypecastSymbolNode(char* value, AST_NODE *s_expr, NUM_T
     node->id = value;
     node->value = s_expr;
     node->type = type;
+    node->symbolType = VAR_TYPE;
 
     return node;
-
 }
 
-SYMBOL_TABLE_NODE *createSymbolNode(char* value, AST_NODE *s_expr)
+SYMBOL_TABLE_NODE *createSymbolVarNode(char* value, AST_NODE *s_expr)
 {
-    return createTypecastSymbolNode(value, s_expr, NO_TYPE);
+    return createTypecastSymbolVarNode(value, s_expr, NO_TYPE);
+}
+
+SYMBOL_TABLE_NODE *createTypecastSymbolLamdaNode(char* value, SYMBOL_TABLE_NODE *arg_list, AST_NODE *s_expr, NUM_TYPE type) {
+    SYMBOL_TABLE_NODE *node;
+    size_t nodeSize;
+
+    nodeSize = sizeof(SYMBOL_TABLE_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+    {
+        yyerror("Memory allocation failed!");
+        exit(1);
+    }
+
+    node->id = value;
+    node->value = s_expr;
+    node->type = type;
+    node->symbolType = LAMBDA_TYPE;
+    node->arg_list = arg_list;
+
+    return node;
+}
+
+SYMBOL_TABLE_NODE *createSymbolLamdaNode(char* value, SYMBOL_TABLE_NODE *arg_list, AST_NODE *s_expr) {
+    return createTypecastSymbolLamdaNode(value, arg_list, s_expr, NO_TYPE);
 }
 
 SYMBOL_TABLE_NODE *addSymbolToList(SYMBOL_TABLE_NODE *newSymbol, SYMBOL_TABLE_NODE *symbolList) {
@@ -220,7 +262,7 @@ AST_NODE *createCondNode(AST_NODE *conditional, AST_NODE *true_node, AST_NODE *f
     return node;
 }
 
-AST_NODE *createFunctionNode(FUNC_TYPE func, AST_NODE *opList)
+AST_NODE *createFunctionNode(FUNC_TYPE func, AST_NODE *opList, char *identifer)
 {
     AST_NODE *node;
     size_t nodeSize;
@@ -234,6 +276,7 @@ AST_NODE *createFunctionNode(FUNC_TYPE func, AST_NODE *opList)
 
     node->data.function.func = func;
     node->data.function.opList = opList;
+    node->data.function.id = identifer;
     node->type = FUNC_NODE_TYPE;
 
     // Set parent pointers for all nodes in list 
@@ -245,6 +288,14 @@ AST_NODE *createFunctionNode(FUNC_TYPE func, AST_NODE *opList)
     }
 
     return node;
+}
+
+AST_NODE *createCoreFunctionNode(FUNC_TYPE func, AST_NODE *opList) {
+    return createFunctionNode(func, opList, NULL);
+}
+
+AST_NODE *createLamdaFunctionNode(char* identifer, AST_NODE *opList) {
+    return createFunctionNode(CUSTOM_FUNC, opList, identifer);
 }
 
 AST_NODE *createScopeNode(SYMBOL_TABLE_NODE *symbol, AST_NODE *child) {
@@ -986,6 +1037,148 @@ RET_VAL evalPrintFuncNode(AST_NODE *node) {
     return r;
 }
 
+STACK_NODE* createStackNode(RET_VAL val) {
+    STACK_NODE *node;
+    size_t nodeSize;
+
+    nodeSize = sizeof(STACK_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+    {
+        yyerror("Memory allocation failed!");
+        exit(1);
+    }
+
+    node->value = val;
+    return node;
+}
+
+RET_VAL evalNumNode(AST_NODE *node)
+{
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalNumNode!");
+        return NAN_RET_VAL;
+    }
+
+    if (node->type != NUM_NODE_TYPE)
+    {
+        yyerror("Incorrect ast node passed into evalNumNode!");
+        return NAN_RET_VAL;
+    }
+
+    return node->data.number;
+}
+
+RET_VAL evalSymbolTableNode(SYMBOL_TABLE_NODE *symbol)
+{   
+    if (!symbol || !symbol->value) {
+        yyerror("Incorrect ast node passed into evalSymbolTableNode!");
+        return NAN_RET_VAL;
+    }
+
+    AST_NODE_TYPE start_type = symbol->value->type;
+    RET_VAL result = eval(symbol->value);
+
+    // first evaluation means we need to swap out the value with a simple number node
+    if (symbol->symbolType != LAMBDA_TYPE && start_type != NUM_NODE_TYPE) {
+        AST_NODE* new_node = createNumberNode(result.value, result.type);
+        freeNode(symbol->value);
+        symbol->value = new_node;
+    }
+
+    if (symbol->type == NO_TYPE || symbol->type == result.type) {
+        return result;
+    }
+
+    // Symbol type would be int if this is true
+    // since the method would return early if types matched
+    if (result.type == DOUBLE_TYPE)
+    {
+        warning("Precision loss on int cast from %.2lf to %d", 
+            result.value, (int) result.value);
+        result.value = floor(result.value);
+    } 
+
+    result.type = symbol->type;
+
+    return result;
+}
+
+RET_VAL evalCustomFuncNode(AST_NODE *node) {
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalCustomFuncNode!");
+        return NAN_RET_VAL; 
+    }
+
+    // Search through scopes to find the closest symbol defintion
+    AST_NODE *currentScope = node;
+    SYMBOL_TABLE_NODE *lamda = NULL;
+
+    while (currentScope != NULL) { 
+        if (currentScope->symbolTable != NULL) {
+            SYMBOL_TABLE_NODE *symbol = currentScope->symbolTable;
+            while (symbol != NULL) {
+                if (symbol->symbolType == LAMBDA_TYPE && strcmp(symbol->id, node->data.symbol.id) == 0) {
+                    lamda = symbol;
+                    break;
+                }
+                symbol = symbol->next;
+            }
+        }
+
+        if (lamda != NULL) {
+            break;
+        }
+
+        // Look further up the tree next iteration
+        currentScope = currentScope->parent;
+    }
+
+    if (lamda == NULL) {
+        warning("Undefined lamda: %s", node->data.symbol.id);
+        return NAN_RET_VAL;
+    }
+
+    STACK_NODE* prev_stack = NULL;
+    STACK_NODE* stack = lamda->stack;
+    SYMBOL_TABLE_NODE* arg = lamda->arg_list;
+    AST_NODE* op = node->data.function.opList;
+
+    if (stack != NULL) {
+        
+    }
+
+    // fill stack with evaluated 
+    while (arg != NULL) {
+        if (op == NULL) {
+            warning("Not enough arguments passed into lamda: %s", node->data.symbol.id);
+            return NAN_RET_VAL;
+        }
+
+        RET_VAL r = eval(op);
+
+        if (stack) {
+            stack->value = r;
+        } else {
+            stack = createStackNode(r);
+            if (prev_stack) prev_stack->next = stack;
+            else lamda->stack = stack;
+        }
+        
+        arg = arg->next;
+        op = op->next;
+        prev_stack = stack;
+        stack = stack->next;
+    }
+
+    if (op != NULL) {
+        warning("lamda: %s called with extra (ignored) arguments!!", node->data.symbol.id);
+    }
+
+    return evalSymbolTableNode(lamda);
+}
+
 RET_VAL evalFuncNode(AST_NODE *node)
 {
     if (!node)
@@ -1047,7 +1240,7 @@ RET_VAL evalFuncNode(AST_NODE *node)
     case PRINT_FUNC:
         return evalPrintFuncNode(node);
     case CUSTOM_FUNC:
-        yyerror("Custom func not available yet but called in evalFuncNode!");
+        return evalCustomFuncNode(node);
     default:
         yyerror("Invalid function type passed into evalFuncNode!");
     }
@@ -1056,56 +1249,38 @@ RET_VAL evalFuncNode(AST_NODE *node)
     return NAN_RET_VAL;
 }
 
-RET_VAL evalNumNode(AST_NODE *node)
-{
-    if (!node)
-    {
-        yyerror("NULL ast node passed into evalNumNode!");
-        return NAN_RET_VAL;
+SYMBOL_TABLE_NODE *findSymbolWithinScope(SYMBOL_TABLE_NODE *symbol, const char * id) {
+    if (symbol == NULL) {
+        return NULL;
     }
 
-    if (node->type != NUM_NODE_TYPE)
-    {
-        yyerror("Incorrect ast node passed into evalNumNode!");
-        return NAN_RET_VAL;
+    while (symbol != NULL) {
+        if (strcmp(symbol->id, id) == 0) {
+            return symbol;
+        }
+        
+        symbol = symbol->next;
     }
-
-    return node->data.number;
 }
 
-RET_VAL evalSymbolTableNode(SYMBOL_TABLE_NODE *symbol)
-{   
-    if (!symbol || !symbol->value) {
-        yyerror("Incorrect ast node passed into evalSymbolTableNode!");
-        return NAN_RET_VAL;
+STACK_NODE *findStackArgWithinLamda(SYMBOL_TABLE_NODE *symbol, const char * id) {
+    if (symbol == NULL) {
+        return NULL;
     }
 
-    AST_NODE_TYPE start_type = symbol->value->type;
-    RET_VAL result = eval(symbol->value);
+    STACK_NODE* stack = symbol->stack;
+    SYMBOL_TABLE_NODE* arg = symbol->arg_list;
 
-    // first evaluation means we need to swap out the value with a simple number node
-    if (start_type != NUM_NODE_TYPE) {
-        AST_NODE* new_node = createNumberNode(result.value, result.type);
-        freeNode(symbol->value);
-        symbol->value = new_node;
+    while (stack != NULL && arg != NULL) {
+        if (strcmp(arg->id, id) == 0) {
+            return stack;
+        }
+        
+        stack = stack->next;
+        arg = arg->next;
     }
 
-    if (symbol->type == NO_TYPE || symbol->type == result.type) {
-        return result;
-    }
-
-    // Symbol type would be int if this is true
-    // since the method would return early if types matched
-    if (result.type == DOUBLE_TYPE)
-    {
-        warning("Precision loss on int cast from %.2lf to %d", 
-            result.value, (int) result.value);
-        result.value = floor(result.value);
-    } 
-
-    result.type = symbol->type;
-
-    return result;
+    return NULL;
 }
 
 RET_VAL evalSymbolNode(AST_NODE *node)
@@ -1122,26 +1297,24 @@ RET_VAL evalSymbolNode(AST_NODE *node)
         return NAN_RET_VAL;
     }
 
-    // Search through scopes to find the cloest symbol defintion
-    AST_NODE *currentScope = node;
+    // Search through scopes to find the closest symbol defintion
+    const char * id = node->data.symbol.id;
 
-    while (currentScope != NULL) { 
-        if (currentScope->symbolTable != NULL) {
-            SYMBOL_TABLE_NODE *symbol = currentScope->symbolTable;
-            while (symbol != NULL) {
-                if (strcmp(symbol->id, node->data.symbol.id) == 0) {
-                    return evalSymbolTableNode(symbol);
-                }
-                symbol = symbol->next;
-            }
+    while (node != NULL) { 
+        if (node->symbolTable != NULL && node->symbolTable->symbolType == LAMBDA_TYPE) {
+            STACK_NODE* stack = findStackArgWithinLamda(node->symbolTable, id);
+            return stack->value;
         }
-
+        
+        SYMBOL_TABLE_NODE *symbol = findSymbolWithinScope(node->symbolTable, id);
+        if (symbol != NULL) {
+            return evalSymbolTableNode(symbol);
+        }
         // Look further up the tree next iteration
-        currentScope = currentScope->parent;
-    }
+        node = node->parent;
+     }
 
-    // Symbol not found
-    warning("Undefined symbol: %s", node->data.symbol.id);
+    warning("Undefined symbol: %s", id);
     return NAN_RET_VAL;
 }
 

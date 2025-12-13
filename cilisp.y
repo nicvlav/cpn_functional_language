@@ -16,10 +16,10 @@
 %token <ival> FUNC TYPE
 %token <dval> INT DOUBLE
 %token <sval> SYMBOL
-%token QUIT EOL EOFT LPAREN RPAREN LET COND
+%token QUIT EOL EOFT LPAREN RPAREN LET COND LAMBDA
 
 %type <astNode> s_expr f_expr s_expr_section s_expr_list number 
-%type <symbolNode> let_section let_list let_elem
+%type <symbolNode> let_section let_list let_elem arg_list
 
 %%
 
@@ -73,13 +73,30 @@ s_expr:
         yyerror("unexpected token");
         $$ = NULL;
     };
-
+    
 f_expr:
     LPAREN FUNC s_expr_section RPAREN  { 
         ylog(f_expr, LPAREN FUNC s_expr_section RPAREN);
-        $$ = createFunctionNode($2, $3); 
+        $$ = createCoreFunctionNode($2, $3); 
+    } |  LPAREN SYMBOL s_expr_section RPAREN  { 
+        ylog(f_expr, LPAREN FUNC s_expr_section RPAREN);
+        $$ = createLamdaFunctionNode($2, $3); 
     };
-    
+
+arg_list:
+    SYMBOL { 
+        ylog(arg_list, SYMBOL);
+        $$ = createSymbolArgNode($1);
+    } 
+     | SYMBOL arg_list {
+        ylog(arg_list, SYMBOL arg_list);
+        $$ = addSymbolToList(createSymbolArgNode($1), $2);
+    }  
+    |  {
+        ylog(arg_list, );
+        $$ = NULL;
+    }; 
+
 let_section:
     LPAREN LET let_list RPAREN  { 
         ylog(f_expr, LPAREN FUNC s_expr_section RPAREN);
@@ -98,10 +115,16 @@ let_list:
 let_elem:
     LPAREN SYMBOL s_expr RPAREN  { 
         ylog(LPAREN, SYMBOL s_expr RPAREN);
-        $$ = createSymbolNode($2, $3);
-    } |  LPAREN TYPE SYMBOL s_expr RPAREN  { 
+        $$ = createSymbolVarNode($2, $3);
+    } | LPAREN TYPE SYMBOL s_expr RPAREN  { 
         ylog(LPAREN, SYMBOL s_expr RPAREN);
-        $$ = createTypecastSymbolNode($3, $4, $2);
+        $$ = createTypecastSymbolVarNode($3, $4, $2);
+    } | LPAREN SYMBOL LAMBDA LPAREN arg_list RPAREN s_expr RPAREN {
+        ylog(LPAREN, PAREN SYMBOL LAMBDA s_expr LPAREN arg_list RPAREN RPAREN);
+        $$ = createSymbolLamdaNode($2, $5, $7) ;
+    } | LPAREN TYPE SYMBOL LAMBDA LPAREN arg_list RPAREN s_expr RPAREN {
+        ylog(LPAREN, PAREN TYPE SYMBOL LAMBDA s_expr LPAREN arg_list RPAREN RPAREN);
+        $$ = createTypecastSymbolLamdaNode($3, $6, $8, $2);
     };
 
 s_expr_section:
@@ -120,7 +143,7 @@ s_expr_list:
     } | s_expr s_expr_list {
         ylog(s_expr_list, s_expr s_expr_list);
         $$ = addExpressionToList($1, $2);
-    };
+    }; 
 
 number:
     INT {

@@ -43,6 +43,11 @@ cond {
     return COND;
 }
 
+lambda {
+    llog(LAMBDA);
+    return LAMBDA;
+}
+
 {type} {
     llog(TYPE);
     yylval.ival = resolveType(yytext);
