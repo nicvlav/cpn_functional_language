@@ -192,7 +192,33 @@ AST_NODE *createSymbolReferenceNode(char* id) {
 
     return node;
 }
+AST_NODE *createCondNode(AST_NODE *conditional, AST_NODE *true_node, AST_NODE *false_node) {
+    if (conditional == NULL || true_node == NULL || false_node == NULL) {
+        yyerror("NULL node passed into createCondNode!");
+        exit(1);
+    }
 
+    AST_NODE *node;
+    size_t nodeSize;
+
+    nodeSize = sizeof(AST_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+    {
+        yyerror("Memory allocation failed!");
+        exit(1);
+    }
+
+    conditional->parent = node;
+    true_node->parent = node;
+    false_node->parent = node;
+
+    node->data.cond.contiditonal = conditional;
+    node->data.cond.true_node = true_node;
+    node->data.cond.false_node = false_node;
+    node->type = COND_NODE_TYPE;
+
+    return node;
+}
 
 AST_NODE *createFunctionNode(FUNC_TYPE func, AST_NODE *opList)
 {
@@ -1049,7 +1075,20 @@ RET_VAL evalNumNode(AST_NODE *node)
 
 RET_VAL evalSymbolTableNode(SYMBOL_TABLE_NODE *symbol)
 {   
+    if (!symbol || !symbol->value) {
+        yyerror("Incorrect ast node passed into evalSymbolTableNode!");
+        return NAN_RET_VAL;
+    }
+
+    AST_NODE_TYPE start_type = symbol->value->type;
     RET_VAL result = eval(symbol->value);
+
+    // first evaluation means we need to swap out the value with a simple number node
+    if (start_type != NUM_NODE_TYPE) {
+        AST_NODE* new_node = createNumberNode(result.value, result.type);
+        freeNode(symbol->value);
+        symbol->value = new_node;
+    }
 
     if (symbol->type == NO_TYPE || symbol->type == result.type) {
         return result;
@@ -1106,6 +1145,29 @@ RET_VAL evalSymbolNode(AST_NODE *node)
     return NAN_RET_VAL;
 }
 
+RET_VAL evalCondNode(AST_NODE *node)
+{   
+    if (!node)
+    {
+        yyerror("NULL ast node passed into evalSymbolNode!");
+        return NAN_RET_VAL;
+    }
+
+    if (node->type != COND_NODE_TYPE)
+    {
+        yyerror("Incorrect ast node passed into evalSymbolNode!");
+        return NAN_RET_VAL;
+    }
+
+    RET_VAL result = eval(node->data.cond.contiditonal);
+
+    if (result.value) {
+        return eval(node->data.cond.true_node);
+    } 
+
+    return eval(node->data.cond.false_node);
+}
+
 RET_VAL eval(AST_NODE *node)
 {
     if (!node)
@@ -1124,6 +1186,8 @@ RET_VAL eval(AST_NODE *node)
         return evalSymbolNode(node);
     case SCOPE_NODE_TYPE:
         return eval(node->data.scope.child);
+    case COND_NODE_TYPE:
+        return evalCondNode(node);
     default:
         yyerror("Incorrect ast node passed into eval!");
     }
@@ -1147,7 +1211,6 @@ void printRetVal(RET_VAL val)
             break;
     }
 }
-
 
 void freeNode(AST_NODE *node)
 {

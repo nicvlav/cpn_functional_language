@@ -16,7 +16,7 @@
 %token <ival> FUNC TYPE
 %token <dval> INT DOUBLE
 %token <sval> SYMBOL
-%token QUIT EOL EOFT LPAREN RPAREN LET
+%token QUIT EOL EOFT LPAREN RPAREN LET COND
 
 %type <astNode> s_expr f_expr s_expr_section s_expr_list number 
 %type <symbolNode> let_section let_list let_elem
@@ -50,7 +50,10 @@ program:
     };
 
 s_expr:
-    f_expr {
+    LPAREN COND s_expr s_expr s_expr RPAREN  {
+        ylog(s_expr, LPAREN COND s_expr s_expr s_expr RPAREN);
+        $$ = createCondNode($3, $4, $5); 
+    } | f_expr {
         ylog(s_expr, f_expr);
         $$ = $1; 
     } | number {

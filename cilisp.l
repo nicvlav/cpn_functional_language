@@ -38,6 +38,10 @@ quit {
     return QUIT;
 }
 
+cond {
+    llog(COND);
+    return COND;
+}
 
 {type} {
     llog(TYPE);

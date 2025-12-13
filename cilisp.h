@@ -85,7 +85,8 @@ typedef enum {
     NUM_NODE_TYPE,
     FUNC_NODE_TYPE,
     SYM_NODE_TYPE,
-    SCOPE_NODE_TYPE
+    SCOPE_NODE_TYPE,
+    COND_NODE_TYPE
 } AST_NODE_TYPE;
 
 typedef struct {
@@ -96,6 +97,12 @@ typedef struct {
     struct ast_node *child;
 } AST_SCOPE;
 
+typedef struct {
+    struct ast_node *contiditonal;
+    struct ast_node *true_node;
+    struct ast_node *false_node;
+} AST_COND;
+
 typedef struct ast_node {
     AST_NODE_TYPE type;
     struct ast_node *parent;
@@ -105,6 +112,7 @@ typedef struct ast_node {
         AST_FUNCTION function;
         AST_SYMBOL symbol;
         AST_SCOPE scope;
+        AST_COND cond;
     } data;
     struct ast_node *next;
 } AST_NODE;
@@ -117,6 +125,7 @@ typedef struct symbol_table_node {
 } SYMBOL_TABLE_NODE;
 
 AST_NODE *createNumberNode(double value, NUM_TYPE type);
+AST_NODE *createCondNode(AST_NODE *conditional, AST_NODE *true_node, AST_NODE *false_node);
 AST_NODE *createFunctionNode(FUNC_TYPE func, AST_NODE *opList);
 AST_NODE *addExpressionToList(AST_NODE *newExpr, AST_NODE *exprList);
 AST_NODE *createSymbolReferenceNode(char* id);
