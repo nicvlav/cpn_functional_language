@@ -812,15 +812,35 @@ RET_VAL evalReadFuncNode(AST_NODE *node) {
     // hardcoded maximum line size of 256
     char line[MAX_READ_CHARS + 1];
 
-    fprintf(stdout, "read :: ");
-
     if (fgets(line, sizeof(line), read_target) == NULL) {
         warning("read could not read line");
         return NAN_RET_VAL; 
     }
 
-    line[strcspn(line, "\n")] = '\0';
-    line[MAX_READ_CHARS] = '\0';
+    int end = MAX_READ_CHARS;
+
+    static const char escapes[] = {
+            '\0',
+            '\n',
+            '\r'
+    };
+
+    static const size_t num_escapes = sizeof(escapes);
+
+    for (size_t i = 0; i < num_escapes; ++i) {
+        int next = strcspn(line, &escapes[i]);
+        if (next < end) {
+            end = next;
+        }
+    }
+
+    line[end] = '\0';
+
+    if (read_target == stdin) {
+      fprintf(stdout, "read :: ");
+    } else {
+      fprintf(stdout, "read :: %s\n", line);
+    }
 
     return parseReadValue(line);
 }
