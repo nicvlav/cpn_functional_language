@@ -33,7 +33,7 @@ Integer : 6
 
 ## Features
 
-**Arithmetic:** `add`, `sub`, `mult`, `div`, `remainder`, `neg`, `abs`
+**Arithmetic:** `add`, `sub`, `mult`, `div`, `remainder`, `neg`, `abs`, `rand`
 
 **Exponential/Logarithmic:** `exp`, `exp2`, `pow`, `log`
 
@@ -41,21 +41,27 @@ Integer : 6
 
 **Comparison:** `max`, `min`, `equal`, `less`, `greater`
 
-**Conditionals:** `cond` - ternary operator for branching
+**I/O:** `read`, `print`
 
-**I/O:** `read`, `print`, `rand`
+**Conditionals:** `cond` - ternary operator
 
-**Symbol Types:**
+```lisp
+> (cond (greater 0.4 0.6) (mult 1 1) (add 2 2))
+Integer : 4
+```
+Short circuiting for standard efficiency
+
+**Scoped Variables:** `let` - define and use symbols
+```lisp
+> ( (let (x 1)) ( (let (y 2)) (add x y) ) )
+Integer : 3
+```
+Supports nested scoping through `let` blocks.
+
+**Symbol Types:** - optionally symbol types
 ```lisp
 > ( (let (int x 5.7)) x )
 Precision loss on int cast from 5.7 to 5
 Integer : 5
 ```
 Declare typed symbols: `int`, `double`
-
-**Scoped Variables:**
-```lisp
-> ( (let (x 1)) ( (let (y 2)) (add x y) ) )
-Integer : 3
-```
-Supports nested scoping through `let` blocks.
