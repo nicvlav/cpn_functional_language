@@ -1236,6 +1236,13 @@ void freeNode(AST_NODE *node)
     case SYM_NODE_TYPE:
         free(node->data.symbol.id);
         break;
+
+    // Cond node has conditional and true/false branch nodes
+    case COND_NODE_TYPE:
+        freeNode(node->data.cond.false_node);
+        freeNode(node->data.cond.true_node);
+        freeNode(node->data.cond.contiditonal);
+        break;
     
     // Number node has stack allocated numbers which take care of themselves 
     case NUM_NODE_TYPE:
