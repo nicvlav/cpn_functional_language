@@ -130,6 +130,7 @@ typedef struct symbol_table_node {
     SYMBOL_TYPE symbolType;
     NUM_TYPE type;
     struct stack_node *stack;
+    // if the symbol is a lamda we store args in a child symbol table
     struct symbol_table_node *arg_list;
     struct symbol_table_node *next;
 } SYMBOL_TABLE_NODE;

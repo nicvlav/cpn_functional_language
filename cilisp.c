@@ -173,7 +173,6 @@ SYMBOL_TABLE_NODE *createTypecastSymbolVarNode(char* value, AST_NODE *s_expr, NU
     node->value = s_expr;
     node->type = type;
     node->symbolType = VAR_TYPE;
-
     return node;
 }
 
@@ -441,8 +440,6 @@ RET_VAL evalSubFuncNode(AST_NODE *node) {
 
     if (right.type == DOUBLE_TYPE ) {
         left.type = DOUBLE_TYPE;
-    } else {
-        left.type = INT_TYPE;
     }
 
     left.value = left.value - right.value;
@@ -1104,6 +1101,16 @@ RET_VAL evalSymbolTableNode(SYMBOL_TABLE_NODE *symbol)
     return result;
 }
 
+void freeStackNode(STACK_NODE* stack) {
+    STACK_NODE* prev_stack;
+
+    while (stack != NULL) {
+        prev_stack = stack;
+        stack = stack->next;
+        free(prev_stack);
+    }
+}
+
 RET_VAL evalCustomFuncNode(AST_NODE *node) {
     if (!node)
     {
@@ -1141,15 +1148,13 @@ RET_VAL evalCustomFuncNode(AST_NODE *node) {
     }
 
     STACK_NODE* prev_stack = NULL;
-    STACK_NODE* stack = lamda->stack;
+    STACK_NODE* top_stack = NULL;
+    STACK_NODE* stack = top_stack;
     SYMBOL_TABLE_NODE* arg = lamda->arg_list;
     AST_NODE* op = node->data.function.opList;
 
-    if (stack != NULL) {
-        
-    }
-
-    // fill stack with evaluated 
+    // first evaluate arguments to local stack
+    // dont change the lamda stack until all args are handled
     while (arg != NULL) {
         if (op == NULL) {
             warning("Not enough arguments passed into lamda: %s", node->data.symbol.id);
@@ -1163,7 +1168,7 @@ RET_VAL evalCustomFuncNode(AST_NODE *node) {
         } else {
             stack = createStackNode(r);
             if (prev_stack) prev_stack->next = stack;
-            else lamda->stack = stack;
+            else top_stack = stack;
         }
         
         arg = arg->next;
@@ -1171,6 +1176,9 @@ RET_VAL evalCustomFuncNode(AST_NODE *node) {
         prev_stack = stack;
         stack = stack->next;
     }
+    freeStackNode(lamda->stack);
+
+    lamda->stack = top_stack;
 
     if (op != NULL) {
         warning("lamda: %s called with extra (ignored) arguments!!", node->data.symbol.id);
@@ -1301,14 +1309,19 @@ RET_VAL evalSymbolNode(AST_NODE *node)
     const char * id = node->data.symbol.id;
 
     while (node != NULL) { 
-        if (node->symbolTable != NULL && node->symbolTable->symbolType == LAMBDA_TYPE) {
-            STACK_NODE* stack = findStackArgWithinLamda(node->symbolTable, id);
-            return stack->value;
-        }
+        SYMBOL_TABLE_NODE* symbol = node->symbolTable;
+        while (symbol != NULL) {
+            if (symbol!= NULL && symbol->symbolType == LAMBDA_TYPE) {
+                STACK_NODE* stack = findStackArgWithinLamda(symbol, id);
+                return stack->value;
+            }
+
+            if (strcmp(symbol->id, id) == 0) {
+                return evalSymbolTableNode(symbol);
+            }
         
-        SYMBOL_TABLE_NODE *symbol = findSymbolWithinScope(node->symbolTable, id);
-        if (symbol != NULL) {
-            return evalSymbolTableNode(symbol);
+            symbol = symbol->next;
+        
         }
         // Look further up the tree next iteration
         node = node->parent;
@@ -1385,6 +1398,23 @@ void printRetVal(RET_VAL val)
     }
 }
 
+void freeSymbolTableNode(SYMBOL_TABLE_NODE* symbol) {
+    if (symbol == NULL) {
+        return;
+    }
+
+    freeStackNode(symbol->stack);
+    freeSymbolTableNode(symbol->arg_list);
+
+    SYMBOL_TABLE_NODE* prev;
+
+    while (symbol != NULL) {
+        prev = symbol;
+        symbol = symbol->next;
+        free(symbol);
+    }
+}
+
 void freeNode(AST_NODE *node)
 {
     if (!node)
@@ -1424,14 +1454,7 @@ void freeNode(AST_NODE *node)
     }
 
     // Free the possible symbol table
-    SYMBOL_TABLE_NODE *symbol = node->symbolTable;
-    while (symbol != NULL) {
-        SYMBOL_TABLE_NODE *next = symbol->next;
-        free(symbol->id);
-        freeNode(symbol->value);
-        free(symbol);
-        symbol = next;
-    }
+    freeSymbolTableNode(node->symbolTable);
 
     // Free siblings
     if (node->next != NULL) {

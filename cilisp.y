@@ -84,15 +84,10 @@ f_expr:
     };
 
 arg_list:
-    SYMBOL { 
-        ylog(arg_list, SYMBOL);
-        $$ = createSymbolArgNode($1);
-    } 
-     | SYMBOL arg_list {
+     SYMBOL arg_list {
         ylog(arg_list, SYMBOL arg_list);
         $$ = addSymbolToList(createSymbolArgNode($1), $2);
-    }  
-    |  {
+    } | {
         ylog(arg_list, );
         $$ = NULL;
     }; 
