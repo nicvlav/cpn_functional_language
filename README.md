@@ -65,3 +65,15 @@ Precision loss on int cast from 5.7 to 5
 Integer : 5
 ```
 Declare typed symbols: `int`, `double`
+
+**Lambda Functions:** `lambda` - custom functions with full recursion
+```lisp
+> (
+    (let (gcd lambda (x y)
+        (cond (equal y 0) x (gcd y (remainder x y)))
+    ))
+    (gcd 48 18)
+  )
+Integer : 6
+```
+Define functions with parameters, supports recursion and composition.
